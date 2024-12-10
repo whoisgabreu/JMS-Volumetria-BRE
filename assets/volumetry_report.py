@@ -191,7 +191,7 @@ class JMS_Report:
                 data = await response.json()
                 records = data.get("data", {}).get("records", [])
                 for record in records:
-                    if ("SJM" in record["shipmentName"] or "BSB" in record["shipmentName"] or "CGE" in record["shipmentName"]) and record["shipmentState"] in [2, 3, 4]:
+                    if ("SJM" in record["shipmentName"] or "BSB" in record["shipmentName"] or "CGE" in record["shipmentName"]) and record["shipmentState"] in [2, 3, 4] and record["endName"] in ["SC BSB 01", "SC CGE 02", "SC SJM 01"]:
                         self.transport_ids.append([record["shipmentNo"], record["createTime"]])
             else:
                 print(f"Erro na resposta SC: {response.status}")
@@ -199,10 +199,12 @@ class JMS_Report:
     async def dc_transport_id(self, session):
         url = "https://gw.jtjms-br.com/transportation/tmsBranchTrackingDetail/page"
         headers = {"authToken": self.authtoken}
+        today = datetime.datetime.today().strftime("%Y-%m-%d")
+        tomorrow = (datetime.datetime.today() + datetime.timedelta(1)).strftime("%Y-%m-%d")
         payloads = [
-            {"current": 1, "size": 20, "startDepartureTime": "2024-12-09 00:00:00", "endDepartureTime": "2024-12-09 23:59:59", "endCode": "316001", "countryId": "1"},
-            {"current": 1, "size": 20, "startDepartureTime": "2024-12-09 00:00:00", "endDepartureTime": "2024-12-09 23:59:59", "endCode": "535105", "countryId": "1"},
-            {"current": 1, "size": 20, "startDepartureTime": "2024-12-09 06:00:00", "endDepartureTime": "2024-12-10 06:00:00", "endCode": "535104", "countryId": "1"}
+            {"current": 1, "size": 100, "startDepartureTime": f"{today} 00:00:00", "endDepartureTime": f"{today} 23:59:59", "endCode": "316001", "countryId": "1"},
+            {"current": 1, "size": 100, "startDepartureTime": f"{today} 00:00:00", "endDepartureTime": f"{today} 23:59:59", "endCode": "535105", "countryId": "1"},
+            {"current": 1, "size": 100, "startDepartureTime": f"{today} 06:00:00", "endDepartureTime": f"{tomorrow} 06:00:00", "endCode": "535104", "countryId": "1"}
         ]
         
         for payload in payloads:
@@ -211,7 +213,8 @@ class JMS_Report:
                     data = await response.json()
                     records = data.get("data", {}).get("records", [])
                     for record in records:
-                        self.transport_ids.append([record["shipmentNo"], record["createTime"]])
+                        # if record["shipmentState"] in [2, 3, 4]:
+                            self.transport_ids.append([record["shipmentNo"], record["createTime"]])
                 else:
                     print(f"Erro na resposta DC: {response.status}")
 
@@ -219,12 +222,12 @@ class JMS_Report:
         async with aiohttp.ClientSession() as session:
             await self.sc_transport_id(session)
             await self.dc_transport_id(session)
-
+            wb_header = ["Número de pedido JMS", "Número do lote", "Chip No.", "Tipo de bipagem", "Tempo de digitalização", "Base de escaneamento", "Parada anterior ou próxima", "Saída do dia", "Quantidade de volumes", "Peso", "Tipo de peso", "Tipo de produto", "Modal", "Estação de origem", "Nome do Cliente", "Digitalizador", "Digitalizador No.", "Correio de coleta ou entrega", "Número de correio de coleta ou entrega", "Signatário", "Origem de dados", "Observação", "Tempo de upload", "Dispositivo No.", "Celular No.", "Comprimento", "Largura", "Altura", "Peso volumétrico", "CEP de origem", "CEP destino", "Número do ID", "Selo de veículo", "Nome da linha", "Reserva No,", "Tipo problemático", "Descrição da não conformidade", "Tipos de pacote não expedido", "Descrição de pacotes não expedidos", "Contato da área de agência", "Endereço da área de agência", "Município de Destino", "Estado da cidade de destino", "PDD de chegada", "Nome do cliente", "Peso Faturado"]
             url = "https://gw.jtjms-br.com/operatingplatform/scanRecordQuery/listPage"
             headers = {"authToken": self.authtoken, "lang": "PT", "langType": "PT",}
             base_payload = {
                 "current": 1,
-                "size": 100,
+                "size": 999,
                 "startDates": "",
                 "endDates": "",
                 "scanSite": "31101",
@@ -246,7 +249,6 @@ class JMS_Report:
             await asyncio.gather(*tasks)
 
             df = pd.DataFrame(self.final_wb)
-            wb_header = ["Número de pedido JMS", "Número do lote", "Chip No.", "Tipo de bipagem", "Tempo de digitalização", "Base de escaneamento", "Parada anterior ou próxima", "Saída do dia", "Quantidade de volumes", "Peso", "Tipo de peso", "Tipo de produto", "Modal", "Estação de origem", "Nome do Cliente", "Digitalizador", "Digitalizador No.", "Correio de coleta ou entrega", "Número de correio de coleta ou entrega", "Signatário", "Origem de dados", "Observação", "Tempo de upload", "Dispositivo No.", "Celular No.", "Comprimento", "Largura", "Altura", "Peso volumétrico", "CEP de origem", "CEP destino", "Número do ID", "Selo de veículo", "Nome da linha", "Reserva No,", "Tipo problemático", "Descrição da não conformidade", "Tipos de pacote não expedido", "Descrição de pacotes não expedidos", "Contato da área de agência", "Endereço da área de agência", "Município de Destino", "Estado da cidade de destino", "PDD de chegada", "Nome do cliente", "Peso Faturado"]
             df.to_csv("teste.csv", index = False, header = wb_header,sep = ";", encoding = "utf-8-sig")
 
     async def process_shipment(self, session, url, headers, base_payload, shipment_number, start_date):
@@ -277,7 +279,7 @@ class JMS_Report:
 
                         page_data = await page_response.json()
                         records = page_data.get("data", {}).get("records", [])
-                        self.final_wb += records
+                        # self.final_wb += records
                         for record in records:
                             # print(record["billNo"], record["listNo"], record["belongNo"], record["scanType"], record["scanDate"], record["inputDept"], record["upOrNextStation"], record["banCi"], record["piece"], record["weight"], record["weightType"], record["goodsType"], record["expreeType"], record["sendSite"], record["sendCus"], record["scanEmp"], record["employeeCode"], record["dispatchReciper"], record["deliveryCode"], record["signUser"], record["dataSource"], record["remark"], record["inputDate"], record["baGunId"], record["phone"], record["length"], record["width"], record["height"], record["bulkWeight"], record["senderPostalCode"], record["receiverPostalCode"], record["transferCode"], record["carSealingLead"], record["carNumber"], record["bookingNo"], record["difficultType"], record["difficultDescription"], record["stayType"], record["stayDescription"], "", "", record["receiverCityName"], record["receiverProvinceName"], record["dispatchNetworkName"], record["customerName"], record["packageChargeWeight"])
                             self.final_wb.append({
@@ -320,6 +322,8 @@ class JMS_Report:
                                 "difficultDescription": record["difficultDescription"],
                                 "stayType": record["stayType"],
                                 "stayDescription": record["stayDescription"],
+                                "TESTE": "",
+                                "TESTE2": "",
                                 "receiverCityName": record["receiverCityName"],
                                 "receiverProvinceName": record["receiverProvinceName"],
                                 "dispatchNetworkName": record["dispatchNetworkName"],
@@ -333,6 +337,6 @@ class JMS_Report:
 
 # Iniciar o processo
 if __name__ == "__main__":
-    authtoken = "c9c92f71bcfa41b696f6b58f13634bcb"
+    authtoken = "1eda3a3936784b8c901ea7c4843269a1"
     report = JMS_Report(authtoken)
     asyncio.run(report.fetch_data())
