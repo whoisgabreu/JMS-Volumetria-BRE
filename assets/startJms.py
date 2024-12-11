@@ -17,7 +17,7 @@ import asyncio
 
 from tkinter import messagebox
 from assets.CaptchaSolver.captcha_solver import CaptchaSolverYOLO
-from assets.volumetry_report import JMS_Report
+from assets.volumetry_report2 import JMS_Report
 
 # # Logar no JMS e retornar informações continas nos Cookies(localStorage) "YL_TOKEN" e "userData"
 class ProjetoJMS():

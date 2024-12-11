@@ -88,8 +88,40 @@ class JMS_Report:
             await asyncio.gather(*tasks)
 
             df = pd.DataFrame(self.final_wb)
-            planejamento_dir = "C:/Users/1175/Desktop/Planejamento/BI/Previsão de volumetria"
-            df.to_csv(os.path.join(planejamento_dir, "BRE.csv"), index = False, header = wb_header,sep = ";", encoding = "utf-8-sig")
+            file_path = "C:/Users/1175/Desktop/Planejamento/BI/Previsão de volumetria/BRE.csv"
+
+        if os.path.exists(file_path):
+            timestamp_modificacao = os.path.getmtime(file_path)
+            horario_modificacao = datetime.datetime.fromtimestamp(timestamp_modificacao)
+            horario_modificacao_formatado = horario_modificacao.strftime("%d-%m-%Y")
+            hoje = datetime.datetime.today().strftime("%d-%m-%Y")
+
+            if horario_modificacao_formatado < hoje and datetime.datetime.today().weekday() not in [5, 6]:
+                os.remove(file_path)
+
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            # Criar DataFrame a partir dos dados obtidos
+            if os.path.exists(file_path):
+                # Carregar dados existentes do arquivo CSV
+                df_existente = pd.read_csv(file_path, sep=";", encoding="utf-8-sig")
+
+                # Verificar se o cabeçalho está presente
+                if "Número de pedido JMS" not in df.columns:
+                    df.columns = df_existente.columns
+
+                # Comparar a primeira coluna ("Número de pedido JMS")
+                novos_numeros_pedidos = ~df['Número de pedido JMS'].isin(df_existente['Número de pedido JMS'])
+
+                # Filtrar novos registros com base na primeira coluna
+                df_novos = df[novos_numeros_pedidos]
+
+                # Adicionar novos registros, se houver
+                if not df_novos.empty:
+                    df_novos.to_csv(file_path, sep=";", encoding="utf-8-sig", header=False, index=False, mode="a")
+            else:
+
+                df.to_csv(os.path.join(file_path, "BRE.csv"), index = False, header = wb_header,sep = ";", encoding = "utf-8-sig")
 
     async def process_shipment(self, session, url, headers, base_payload, shipment_number, start_date):
         try:
@@ -124,8 +156,8 @@ class JMS_Report:
                             # print(record["billNo"], record["listNo"], record["belongNo"], record["scanType"], record["scanDate"], record["inputDept"], record["upOrNextStation"], record["banCi"], record["piece"], record["weight"], record["weightType"], record["goodsType"], record["expreeType"], record["sendSite"], record["sendCus"], record["scanEmp"], record["employeeCode"], record["dispatchReciper"], record["deliveryCode"], record["signUser"], record["dataSource"], record["remark"], record["inputDate"], record["baGunId"], record["phone"], record["length"], record["width"], record["height"], record["bulkWeight"], record["senderPostalCode"], record["receiverPostalCode"], record["transferCode"], record["carSealingLead"], record["carNumber"], record["bookingNo"], record["difficultType"], record["difficultDescription"], record["stayType"], record["stayDescription"], "", "", record["receiverCityName"], record["receiverProvinceName"], record["dispatchNetworkName"], record["customerName"], record["packageChargeWeight"])
                             self.final_wb.append({
                                 "billNo": record["billNo"],
-                                "listNo": record["listNo"],
                                 "belongNo": record["belongNo"],
+                                "a": "",
                                 "scanType": record["scanType"],
                                 "scanDate": record["scanDate"],
                                 "inputDept": record["inputDept"],
