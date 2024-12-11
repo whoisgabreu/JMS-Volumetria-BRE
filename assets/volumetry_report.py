@@ -178,12 +178,13 @@ class JMS_Report:
     def __init__(self, authtoken):
         self.authtoken = authtoken
         self.start_date = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
-        self.end_date = (datetime.datetime.today() + datetime.timedelta(1)).strftime("%Y-%m-%d")
+        self.end_date = (datetime.datetime.today() + datetime.timedelta(0)).strftime("%Y-%m-%d")
         self.transport_ids = []
         self.final_wb = []
 
-    async def sc_transport_id(self, session):
-        url = f"https://gw.jtjms-br.com/transportation/tmsShipment/page?current=1&size=20&startCode=31101&startDateTime={self.start_date}+15:00:00&endDateTime={self.end_date}+15:00:00&searchType=manage"
+    async def sc_transport_id(self, session): 
+        # 
+        url = f"https://gw.jtjms-br.com/transportation/tmsShipment/page?current=1&size=999&startCode=31101&startDateTime={self.start_date}+15:00:00&endDateTime={self.end_date}+15:00:00&searchType=manage"
         headers = {"authToken": self.authtoken}
         
         async with session.get(url, headers=headers) as response:
@@ -191,12 +192,18 @@ class JMS_Report:
                 data = await response.json()
                 records = data.get("data", {}).get("records", [])
                 for record in records:
-                    if ("SJM" in record["shipmentName"] or "BSB" in record["shipmentName"] or "CGE" in record["shipmentName"]) and record["shipmentState"] in [2, 3, 4] and record["endName"] in ["SC BSB 01", "SC CGE 02", "SC SJM 01"]:
+
+                    plannedArrivalCheck = datetime.datetime.today().strftime("%Y-%m-%d 23:59:59")
+                    plannedArrivalCheck = datetime.datetime.strptime(plannedArrivalCheck, "%Y-%m-%d %H:%M:%S")
+                    plannedArrival = datetime.datetime.strptime(record["plannedArrivalTime"], "%Y-%m-%d %H:%M:%S")
+
+
+                    if record["shipmentState"] in [3, 4] and record["startName"] in ["SC BRE 01"] and record["endName"] in ["SC BSB 01", "SC CGE 02", "SC SJM 01", "DC SRR 001"] and plannedArrival < plannedArrivalCheck:
                         self.transport_ids.append([record["shipmentNo"], record["createTime"]])
             else:
                 print(f"Erro na resposta SC: {response.status}")
 
-    async def dc_transport_id(self, session):
+    async def dc_transport_id(self, session): # Não necessita de alteração
         url = "https://gw.jtjms-br.com/transportation/tmsBranchTrackingDetail/page"
         headers = {"authToken": self.authtoken}
         today = datetime.datetime.today().strftime("%Y-%m-%d")
@@ -222,6 +229,8 @@ class JMS_Report:
         async with aiohttp.ClientSession() as session:
             await self.sc_transport_id(session)
             await self.dc_transport_id(session)
+            # print(self.transport_ids)
+            # breakpoint()
             wb_header = ["Número de pedido JMS", "Número do lote", "Chip No.", "Tipo de bipagem", "Tempo de digitalização", "Base de escaneamento", "Parada anterior ou próxima", "Saída do dia", "Quantidade de volumes", "Peso", "Tipo de peso", "Tipo de produto", "Modal", "Estação de origem", "Nome do Cliente", "Digitalizador", "Digitalizador No.", "Correio de coleta ou entrega", "Número de correio de coleta ou entrega", "Signatário", "Origem de dados", "Observação", "Tempo de upload", "Dispositivo No.", "Celular No.", "Comprimento", "Largura", "Altura", "Peso volumétrico", "CEP de origem", "CEP destino", "Número do ID", "Selo de veículo", "Nome da linha", "Reserva No,", "Tipo problemático", "Descrição da não conformidade", "Tipos de pacote não expedido", "Descrição de pacotes não expedidos", "Contato da área de agência", "Endereço da área de agência", "Município de Destino", "Estado da cidade de destino", "PDD de chegada", "Nome do cliente", "Peso Faturado"]
             url = "https://gw.jtjms-br.com/operatingplatform/scanRecordQuery/listPage"
             headers = {"authToken": self.authtoken, "lang": "PT", "langType": "PT",}
@@ -337,6 +346,6 @@ class JMS_Report:
 
 # Iniciar o processo
 if __name__ == "__main__":
-    authtoken = "1eda3a3936784b8c901ea7c4843269a1"
+    authtoken = "b600b8a9963444b5bcccd6c3de6a0e69"
     report = JMS_Report(authtoken)
     asyncio.run(report.fetch_data())
