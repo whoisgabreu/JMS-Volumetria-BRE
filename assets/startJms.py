@@ -13,6 +13,7 @@ import threading
 import sys
 import requests
 import pandas as pd
+import asyncio
 
 from tkinter import messagebox
 from assets.CaptchaSolver.captcha_solver import CaptchaSolverYOLO
@@ -77,7 +78,7 @@ class ProjetoJMS():
             self.driver.quit()
 
 
-            JMS_Report(self.authToken).fetch_data()
+            asyncio.run(JMS_Report(self.authToken).fetch_data())
 
             # shipmentInfo = []
 
