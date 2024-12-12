@@ -120,4 +120,4 @@ class ProjetoJMS():
         else:
             sys.exit()
 
-ProjetoJMS().start()
+# ProjetoJMS().start()
