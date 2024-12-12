@@ -71,6 +71,9 @@ class JMS_Report:
                          "Nome da linha", "Reserva No,", "Tipo problemático", "Descrição da não conformidade", "Tipos de pacote não expedido",
                          "Descrição de pacotes não expedidos", "Contato da área de agência", "Endereço da área de agência",
                          "Município de Destino", "Estado da cidade de destino", "PDD de chegada", "Nome do cliente", "Peso Faturado"]
+            
+            wb_header_new = ["Número do pedido JMS","Número do lote","Chip No.","Tipo de bipagem","Tempo de digitalização","Saídas de digitalização","Parada anterior ou próxima","Expedições","Quantidade de volumes","Peso","Tipo de peso","Categoria de Produtos","Modal","Estação de origem","Nome do Cliente","Digitalizador","Digitalizador No.","Correio de coleta ou entrega","Número de correio de coleta ou entrega","Signatário","Origem de dados","OBS","Tempo de upload","Dispositivo No.","Celular No.","Comprimento","Largura","Altura","Peso volumétrico","CEP de origem","CEP destino","ID Viagem","Selo de veículo","Nome da linha","Reserva No,","Tipo de Pacote Problemático","Descrição da não conformidade","Tipos de pacote não expedido","Descrição de pacotes não expedidos","Contato da área de agência","Endereço da área de agência","Município de Destino","目的城市所属州","PDD Destino","Nome do cliente","Column46"]
+
 
             file_path = "C:/Users/Gabriel/Desktop/Planejamento/BI/Previsão de volumetria/BRE.csv"
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -96,7 +99,7 @@ class JMS_Report:
                 if not df_novos.empty:
                     df_novos.to_csv(file_path, sep=";", encoding="utf-8-sig", header=False, index=False, mode="a")
             else:
-                df.to_csv(file_path, index=False, header=wb_header, sep=";", encoding="utf-8-sig")
+                df.to_csv(file_path, index=False, header=wb_header_new, sep=";", encoding="utf-8-sig")
 
     async def process_shipment(self, session, url, headers, base_payload, shipment_number, start_date):
         try:
